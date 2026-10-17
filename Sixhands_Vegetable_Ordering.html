@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sixhands - Smart Vegetable Ordering & Inventory</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Serif+JP:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Noto Serif JP', 'serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f3f6f4',
+              100: '#e3eae5',
+              200: '#c5d5cb',
+              600: '#2e4a3e',
+              700: '#243b31',
+              800: '#1a2c24',
+              900: '#111d18',
+            },
+            washi: '#faf8f5',
+            charcoal: '#1f2421'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #faf8f5;
+      color: #1f2421;
+    }
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="font-sans min-h-screen flex flex-col antialiased">
+
+  <div id="app" class="flex-grow flex flex-col">
+    <!-- Header -->
+    <header class="bg-brand-900 text-white shadow-md sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-full bg-brand-600 flex items-center justify-center font-serif text-lg font-bold border border-emerald-400/30">
+            六
+          </div>
+          <div>
+            <h1 class="text-lg font-bold tracking-wide font-serif leading-tight">SIXHANDS</h1>
+            <p class="text-xs text-brand-200 tracking-wider uppercase">Millenia Walk • Smart Vegetable Inventory & Day Profiles</p>
+          </div>
+        </div>
+
+        <!-- Sync Status -->
+        <div class="flex items-center space-x-3 text-xs">
+          <div id="sync-status" class="flex items-center space-x-1.5 bg-brand-800 px-3 py-1.5 rounded-full border border-brand-700">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="status-dot"></span>
+            <span id="status-text" class="text-brand-100 font-medium">Connecting...</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left Column: Day Profiles & Calculator (lg:col-span-7) -->
+      <section class="lg:col-span-7 flex flex-col space-y-6">
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-gray-200 bg-white rounded-xl p-1.5 shadow-sm">
+          <button id="tab-new-order" onclick="switchTab('new-order')" class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition duration-150 flex items-center justify-center space-x-2 bg-brand-600 text-white shadow">
+            <i class="fa-solid fa-calculator"></i>
+            <span>Leftover & Day Calculator</span>
+            <span id="basket-badge" class="ml-1 bg-white text-brand-800 text-xs font-bold px-2 py-0.5 rounded-full hidden">0</span>
+          </button>
+          <button id="tab-history" onclick="switchTab('history')" class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition duration-150 flex items-center justify-center space-x-2 text-gray-600 hover:text-brand-700">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Past Orders Log</span>
+            <span id="history-badge" class="ml-1 bg-gray-200 text-gray-700 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+          </button>
+        </div>
+
+        <!-- View: CALCULATOR / LEFTOVER ENTRY -->
+        <div id="view-new-order" class="space-y-6">
+
+          <!-- Target Day & Day-Specific Usage Selector -->
+          <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200/80 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+              <div>
+                <h2 class="text-base font-bold text-gray-800 flex items-center space-x-2">
+                  <i class="fa-solid fa-calendar-day text-brand-600"></i>
+                  <span>Target Ordering Day & Day Profile Usage</span>
+                </h2>
+                <p class="text-xs text-gray-500">Usage rates are saved per day. Changing day automatically loads saved usage!</p>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button onclick="saveDayUsageProfileToCloud()" class="text-xs text-white font-bold bg-brand-600 hover:bg-brand-700 px-3 py-1.5 rounded-lg transition flex items-center space-x-1 shadow-xs">
+                  <i class="fa-solid fa-floppy-disk"></i>
+                  <span>Save Day Usage</span>
+                </button>
+                <button onclick="resetAllLeftovers()" class="text-xs text-brand-700 hover:text-brand-900 font-semibold bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg border border-brand-200 transition">
+                  <i class="fa-solid fa-rotate-left mr-1"></i>Reset Leftovers
+                </button>
+              </div>
+            </div>
+
+            <!-- Day Selector Pills (Mon - Sun) -->
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5">Active Day Usage Profile:</label>
+              <div class="grid grid-cols-7 gap-1.5" id="day-profile-pills">
+                <!-- JavaScript renders day pills -->
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <!-- Target Delivery Date Picker -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Delivery Target Date</label>
+                <input type="date" id="order-delivery-date" onchange="onDeliveryDateChange()" class="w-full bg-gray-50 border border-gray-300 text-gray-800 text-xs rounded-lg p-2.5 focus:ring-brand-600 focus:border-brand-600 font-medium">
+                <p id="formatted-day-preview" class="text-[11px] text-brand-700 font-bold mt-1">Monday (19/10)</p>
+              </div>
+
+              <!-- Coverage Days -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Days to Cover</label>
+                <select id="days-to-cover" onchange="recalculateAllOrders()" class="w-full bg-gray-50 border border-gray-300 text-gray-800 text-xs font-bold rounded-lg p-2.5 focus:ring-brand-600 focus:border-brand-600">
+                  <option value="1">1 Day Supply</option>
+                  <option value="2" selected>2 Days Supply (Standard)</option>
+                  <option value="3">3 Days Supply (Weekend Peak)</option>
+                  <option value="4">4 Days Supply (Long Weekend)</option>
+                </select>
+              </div>
+
+              <!-- Demand Surge Multiplier -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Volume Multiplier / Surge</label>
+                <select id="demand-multiplier" onchange="recalculateAllOrders()" class="w-full bg-gray-50 border border-gray-300 text-gray-800 text-xs font-bold rounded-lg p-2.5 focus:ring-brand-600 focus:border-brand-600">
+                  <option value="1.0">Standard Usage (100%)</option>
+                  <option value="1.2">Moderate High (+20% Surge)</option>
+                  <option value="1.5">Weekend Surge (+50% Surge)</option>
+                  <option value="0.8">Slow Day (-20% Demand)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Inventory Leftover & Customizable Units Grid -->
+          <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200/80 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h2 class="text-base font-bold text-gray-800 flex items-center space-x-2">
+                <i class="fa-solid fa-boxes-stacked text-brand-600"></i>
+                <span>Leftover & Daily Usage Config</span>
+              </h2>
+
+              <div class="flex items-center space-x-2">
+                <div class="relative text-gray-500">
+                  <input type="text" id="veg-search" oninput="filterPresetItems()" placeholder="Search veg..." class="w-full sm:w-44 pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-300 text-xs rounded-lg focus:ring-brand-600">
+                  <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-xs text-gray-400"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Category Pills -->
+            <div class="flex space-x-2 overflow-x-auto scrollbar-thin pb-1" id="category-pills">
+              <button onclick="filterCategory('All')" class="cat-pill px-3 py-1 text-xs font-medium rounded-full bg-brand-600 text-white whitespace-nowrap shadow-xs">All Items</button>
+              <button onclick="filterCategory('Processed')" class="cat-pill px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap">Pre-cut Processed</button>
+              <button onclick="filterCategory('NonProcessed')" class="cat-pill px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap">Non Processed</button>
+            </div>
+
+            <!-- Items List -->
+            <div id="quick-items-grid" class="space-y-3 max-h-[500px] overflow-y-auto scrollbar-thin pr-1">
+              <!-- Rendered via JavaScript -->
+            </div>
+
+            <!-- Custom Item Creator with Flexible Unit Picker -->
+            <div class="pt-4 border-t border-gray-100 space-y-2">
+              <p class="text-xs font-bold text-gray-800 flex items-center space-x-1">
+                <i class="fa-solid fa-square-plus text-brand-600"></i>
+                <span>Add Custom Item & Specific Unit:</span>
+              </p>
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                <input type="text" id="custom-name" placeholder="Name & Cut Specification (e.g. Zucchini Cut 2mm)" class="sm:col-span-4 bg-gray-50 border border-gray-300 text-xs rounded-lg p-2.5 focus:ring-brand-600">
+                <select id="custom-type" class="sm:col-span-3 bg-gray-50 border border-gray-300 text-xs rounded-lg p-2.5 focus:ring-brand-600">
+                  <option value="Pre-cut processed items">Pre-cut Processed</option>
+                  <option value="Non Processed items">Non Processed</option>
+                </select>
+                <input type="number" id="custom-daily-usage" placeholder="Daily Usage" min="0" step="0.5" value="2" class="sm:col-span-2 bg-gray-50 border border-gray-300 text-xs rounded-lg p-2.5 focus:ring-brand-600">
+                
+                <select id="custom-unit-select" onchange="toggleCustomUnitInput('custom')" class="sm:col-span-1 bg-gray-50 border border-gray-300 text-xs rounded-lg p-2.5 focus:ring-brand-600 font-medium">
+                  <option value="kg">kg</option>
+                  <option value="g">g</option>
+                  <option value="pc">pc</option>
+                  <option value="box">box</option>
+                  <option value="pkt">pkt</option>
+                  <option value="carton">carton</option>
+                  <option value="bdl">bdl</option>
+                  <option value="punnet">punnet</option>
+                  <option value="tub">tub</option>
+                  <option value="bag">bag</option>
+                  <option value="custom">Other...</option>
+                </select>
+
+                <input type="text" id="custom-unit-text" placeholder="Custom Unit" class="sm:col-span-1 bg-white border border-brand-400 text-xs rounded-lg p-2.5 focus:ring-brand-600 hidden">
+
+                <button onclick="addNewCustomVegetable()" class="sm:col-span-2 bg-brand-800 hover:bg-brand-900 text-white font-medium text-xs py-2.5 rounded-lg transition shadow-xs flex items-center justify-center space-x-1">
+                  <i class="fa-solid fa-plus"></i>
+                  <span>Add Item</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- View: ORDER HISTORY LOG -->
+        <div id="view-history" class="space-y-4 hidden">
+          <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200/80 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h2 class="text-base font-bold text-gray-800 flex items-center space-x-2">
+                <i class="fa-solid fa-boxes-packing text-brand-600"></i>
+                <span>Past Order Records</span>
+              </h2>
+              <button onclick="refreshHistory()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-3 py-1.5 rounded-lg flex items-center space-x-1">
+                <i class="fa-solid fa-rotate"></i>
+                <span>Refresh Log</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              <input type="text" id="history-search" oninput="renderHistoryList()" placeholder="Search veg name, vendor..." class="bg-gray-50 border border-gray-300 text-xs rounded-lg p-2 focus:ring-brand-600">
+              
+              <select id="history-status-filter" onchange="renderHistoryList()" class="bg-gray-50 border border-gray-300 text-xs rounded-lg p-2 focus:ring-brand-600">
+                <option value="ALL">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Sent">Sent</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+
+              <select id="history-date-sort" onchange="renderHistoryList()" class="bg-gray-50 border border-gray-300 text-xs rounded-lg p-2 focus:ring-brand-600">
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="history-orders-list" class="space-y-4">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Right Column: Finalized Order Basket & Export (lg:col-span-5) -->
+      <section class="lg:col-span-5 flex flex-col space-y-4">
+
+        <div class="bg-white rounded-xl shadow-md border border-gray-200/80 p-5 flex flex-col h-full sticky top-20">
+          <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+            <div>
+              <h2 class="text-base font-bold text-gray-800 flex items-center space-x-2">
+                <i class="fa-solid fa-cart-flatbed text-brand-600"></i>
+                <span>Final Order List</span>
+              </h2>
+              <p class="text-xs text-gray-500">Calculated with active day usage & leftovers</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <input type="checkbox" id="toggle-include-zero" onchange="renderBasket()" checked class="w-3.5 h-3.5 text-brand-600 rounded focus:ring-brand-600">
+              <label for="toggle-include-zero" class="text-xs text-gray-600 font-medium cursor-pointer">Show <code class="text-brand-800 font-bold">x -</code> items</label>
+            </div>
+          </div>
+
+          <!-- Outlet & Location -->
+          <div class="mb-3">
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Outlet Header Title</label>
+            <input type="text" id="order-vendor" value="SIXHANDS - MILLENIAWALK" class="w-full bg-gray-50 border border-gray-300 text-xs rounded-lg p-2 font-semibold text-gray-800">
+          </div>
+
+          <!-- Basket Items Scroll area -->
+          <div id="basket-items-container" class="flex-grow space-y-2 max-h-[360px] overflow-y-auto scrollbar-thin pr-1 min-h-[160px]">
+            <!-- Rendered via JS -->
+          </div>
+
+          <!-- Order Notes -->
+          <div class="mt-4 pt-3 border-t border-gray-100">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Supplier / Kitchen Remarks</label>
+            <textarea id="order-notes" rows="2" placeholder="e.g. Morning delivery before 10 AM please." class="w-full bg-gray-50 border border-gray-300 text-xs rounded-lg p-2.5 focus:ring-brand-600 resize-none"></textarea>
+          </div>
+
+          <!-- Basket Summary Stats -->
+          <div class="bg-brand-50/80 rounded-lg p-3 my-4 border border-brand-100 flex justify-between items-center text-xs text-gray-700">
+            <div>
+              <span class="block text-gray-500">Items to Order</span>
+              <span id="summary-item-count" class="font-bold text-sm text-brand-900">0 items</span>
+            </div>
+            <div class="text-right">
+              <span class="block text-gray-500">Non-Zero Lines</span>
+              <span id="summary-active-count" class="font-bold text-sm text-brand-900">0 active</span>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="space-y-2">
+            <button id="btn-save-order" onclick="saveOrderToCloud()" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition duration-150 flex items-center justify-center space-x-2 text-sm">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <span>Save & Register Order</span>
+            </button>
+
+            <button onclick="openExportModalCurrent()" class="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-medium py-2.5 px-4 rounded-xl shadow transition duration-150 flex items-center justify-center space-x-2 text-xs">
+              <i class="fa-brands fa-whatsapp text-sm"></i>
+              <span>Export WhatsApp Template</span>
+            </button>
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-100 border-t border-gray-200 py-4 mt-auto">
+      <div class="max-w-7xl mx-auto px-4 text-center text-xs text-gray-500">
+        Sixhands Millenia Walk • Smart Vegetable Inventory & Day Usage Management
+      </div>
+    </footer>
+  </div>
+
+  <!-- EXPORT / TEXT FORMATTER MODAL -->
+  <div id="export-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 border border-gray-100 transform transition-all">
+      <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+        <h3 class="text-base font-bold text-gray-800 flex items-center space-x-2">
+          <i class="fa-solid fa-paper-plane text-emerald-600"></i>
+          <span>WhatsApp Order Template</span>
+        </h3>
+        <button onclick="closeExportModal()" class="text-gray-400 hover:text-gray-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-gray-600">Formatted text matching the Sixhands Millenia Walk layout (Compact, no empty lines between items):</p>
+
+      <textarea id="export-text-area" rows="13" readonly class="w-full bg-gray-50 border border-gray-300 font-mono text-xs rounded-lg p-3 text-gray-800 focus:ring-brand-600 scrollbar-thin"></textarea>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="copyExportText()" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-medium py-2.5 rounded-xl text-xs flex items-center justify-center space-x-1.5 transition">
+          <i class="fa-solid fa-copy"></i>
+          <span id="copy-btn-label">Copy Text</span>
+        </button>
+        <a id="btn-open-whatsapp" href="#" target="_blank" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-xl text-xs flex items-center justify-center space-x-1.5 transition text-center">
+          <i class="fa-brands fa-whatsapp text-sm"></i>
+          <span>Open WhatsApp</span>
+        </a>
+        <button onclick="closeExportModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-4 py-2.5 rounded-xl text-xs transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 ease-out bg-gray-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 pointer-events-none">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-msg">Action completed</span>
+  </div>
+
+  <!-- Firebase Modular Scripts -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { 
+      getAuth, 
+      signInAnonymously, 
+      signInWithCustomToken, 
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { 
+      getFirestore, 
+      collection, 
+      doc, 
+      getDoc,
+      setDoc,
+      addDoc, 
+      updateDoc, 
+      deleteDoc, 
+      onSnapshot 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'sixhands-veg-orders';
+    
+    const firebaseConfig = typeof __firebase_config !== 'undefined' 
+      ? JSON.parse(__firebase_config) 
+      : {
+          apiKey: "AIzaSyDemoConfigKeyForSixhandsApp",
+          authDomain: "sixhands-app.firebaseapp.com",
+          projectId: "sixhands-app",
+          storageBucket: "sixhands-app.appspot.com",
+          messagingSenderId: "1234567890",
+          appId: "1:1234567890:web:abcdef123456"
+        };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.db = db;
+    window.appId = appId;
+    window.currentUser = null;
+    window.savedOrders = [];
+    window.currentCategoryFilter = 'All';
+
+    // Days list
+    window.DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    window.activeSelectedDay = 'Monday';
+
+    // Standard Preset List with Customizable Units
+    window.STANDARD_UNITS = ['kg', 'g', 'pc', 'box', 'pkt', 'carton', 'bdl', 'punnet', 'tub', 'bag'];
+
+    // Master Item List
+    window.VEGETABLE_MASTER = [
+      // Pre-cut Processed Items
+      { id: 'v1', name: 'Kale Cut *1cm - STEM OFF*', unit: 'kg', isCustomUnit: false, cat: 'Pre-cut processed items', catKey: 'Processed', dailyUsageProfile: { Monday: 4.0, Tuesday: 4.0, Wednesday: 4.0, Thursday: 4.0, Friday: 5.0, Saturday: 6.0, Sunday: 5.0 }, leftover: 0, overrideQty: null },
+      { id: 'v2', name: 'Lettuce Romaine Cut *1cm x 1cm*', unit: 'kg', isCustomUnit: false, cat: 'Pre-cut processed items', catKey: 'Processed', dailyUsageProfile: { Monday: 4.5, Tuesday: 4.5, Wednesday: 4.5, Thursday: 4.5, Friday: 5.5, Saturday: 6.5, Sunday: 5.5 }, leftover: 0, overrideQty: null },
+      { id: 'v3', name: 'Cabbage Red Shredded *0.3cm cut*', unit: 'kg', isCustomUnit: false, cat: 'Pre-cut processed items', catKey: 'Processed', dailyUsageProfile: { Monday: 2.5, Tuesday: 2.5, Wednesday: 2.5, Thursday: 2.5, Friday: 3.5, Saturday: 4.0, Sunday: 3.5 }, leftover: 0, overrideQty: null },
+      { id: 'v4', name: 'Onion Purple Spanish Sliced - *semicircle cut 5mm*', unit: 'kg', isCustomUnit: false, cat: 'Pre-cut processed items', catKey: 'Processed', dailyUsageProfile: { Monday: 3.0, Tuesday: 3.0, Wednesday: 3.0, Thursday: 3.0, Friday: 4.0, Saturday: 5.0, Sunday: 4.0 }, leftover: 0, overrideQty: null },
+      { id: 'v5', name: 'Tomato Diced - *1cm x 1cm cut*', unit: 'kg', isCustomUnit: false, cat: 'Pre-cut processed items', catKey: 'Processed', dailyUsageProfile: { Monday: 2.5, Tuesday: 2.5, Wednesday: 2.5, Thursday: 2.5, Friday: 3.5, Saturday: 4.0, Sunday: 3.5 }, leftover: 0, overrideQty: null },
+      { id: 'v6', name: 'Beetroot Strips - *1mm cut*', unit: 'kg', isCustomUnit: false, cat: 'Pre-cut processed items', catKey: 'Processed', dailyUsageProfile: { Monday: 1.0, Tuesday: 1.0, Wednesday: 1.0, Thursday: 1.0, Friday: 1.5, Saturday: 2.0, Sunday: 1.5 }, leftover: 0, overrideQty: null },
+      { id: 'v7', name: 'Carrot Strips - *1mm cut*', unit: 'kg', isCustomUnit: false, cat: 'Pre-cut processed items', catKey: 'Processed', dailyUsageProfile: { Monday: 1.5, Tuesday: 1.5, Wednesday: 1.5, Thursday: 1.5, Friday: 2.0, Saturday: 2.5, Sunday: 2.0 }, leftover: 0, overrideQty: null },
+      
+      // Non Processed Items
+      { id: 'v8', name: 'Baby Romaine Lettuce', unit: 'kg', isCustomUnit: false, cat: 'Non Processed items', catKey: 'NonProcessed', dailyUsageProfile: { Monday: 1.0, Tuesday: 1.0, Wednesday: 1.0, Thursday: 1.0, Friday: 1.5, Saturday: 2.0, Sunday: 1.5 }, leftover: 0, overrideQty: null },
+      { id: 'v9', name: 'Eggplant - *Small: 200 - 300g/pc ; Big: 500 - 600g/pc*', unit: 'kg', isCustomUnit: false, cat: 'Non Processed items', catKey: 'NonProcessed', dailyUsageProfile: { Monday: 1.0, Tuesday: 1.0, Wednesday: 1.0, Thursday: 1.0, Friday: 1.5, Saturday: 2.0, Sunday: 1.5 }, leftover: 0, overrideQty: null },
+      { id: 'v10', name: 'Ripe Avocado - *Pack by box* （90% ripe）', unit: 'pc', isCustomUnit: false, cat: 'Non Processed items', catKey: 'NonProcessed', dailyUsageProfile: { Monday: 30, Tuesday: 30, Wednesday: 30, Thursday: 30, Friday: 45, Saturday: 60, Sunday: 45 }, leftover: 0, overrideQty: null },
+      { id: 'v11', name: 'Watermelon Red', unit: 'kg', isCustomUnit: false, cat: 'Non Processed items', catKey: 'NonProcessed', dailyUsageProfile: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0, Sunday: 0 }, leftover: 0, overrideQty: null },
+      { id: 'v12', name: 'Lemon', unit: 'pc', isCustomUnit: false, cat: 'Non Processed items', catKey: 'NonProcessed', dailyUsageProfile: { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0, Sunday: 0 }, leftover: 0, overrideQty: null },
+      { id: 'v13', name: 'Swiss Mushroom Brown - *Pack in blue colored container*', unit: 'kg', isCustomUnit: false, cat: 'Non Processed items', catKey: 'NonProcessed', dailyUsageProfile: { Monday: 0.5, Tuesday: 0.5, Wednesday: 0.5, Thursday: 0.5, Friday: 1.0, Saturday: 1.5, Sunday: 1.0 }, leftover: 0, overrideQty: null }
+    ];
+
+    async function initAuth() {
+      const statusDot = document.getElementById('status-dot');
+      const statusText = document.getElementById('status-text');
+
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) {
+        console.warn("Auth fallback:", err);
+        try { await signInAnonymously(auth); } catch (e) {}
+      }
+
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          window.currentUser = user;
+          statusDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+          statusText.innerText = "Cloud Synced";
+          
+          await loadDayUsageProfilesFromCloud();
+          setupOrdersListener();
+        } else {
+          statusDot.className = "w-2 h-2 rounded-full bg-red-400";
+          statusText.innerText = "Offline Mode";
+        }
+      });
+    }
+
+    async function loadDayUsageProfilesFromCloud() {
+      if (!window.currentUser) return;
+      try {
+        const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'dayUsageProfiles');
+        const docSnap = await getDoc(configDocRef);
+        if (docSnap.exists()) {
+          const cloudProfiles = docSnap.data().items || [];
+          cloudProfiles.forEach(cItem => {
+            const masterItem = window.VEGETABLE_MASTER.find(m => m.name === cItem.name);
+            if (masterItem) {
+              masterItem.dailyUsageProfile = { ...masterItem.dailyUsageProfile, ...cItem.dailyUsageProfile };
+              if (cItem.unit) masterItem.unit = cItem.unit;
+              if (cItem.isCustomUnit !== undefined) masterItem.isCustomUnit = cItem.isCustomUnit;
+            } else if (cItem.id && cItem.id.startsWith('cust_')) {
+              window.VEGETABLE_MASTER.push(cItem);
+            }
+          });
+          recalculateAllOrders();
+        }
+      } catch (err) {
+        console.warn("Error loading usage profiles:", err);
+      }
+    }
+
+    window.saveDayUsageProfileToCloud = async function() {
+      if (!window.currentUser) {
+        showToast("Cloud sync offline", true);
+        return;
+      }
+
+      try {
+        const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'dayUsageProfiles');
+        const itemsToSave = window.VEGETABLE_MASTER.map(item => ({
+          id: item.id,
+          name: item.name,
+          unit: item.unit,
+          isCustomUnit: item.isCustomUnit,
+          cat: item.cat,
+          catKey: item.catKey,
+          dailyUsageProfile: item.dailyUsageProfile
+        }));
+
+        await setDoc(configDocRef, {
+          updatedAt: new Date().toISOString(),
+          items: itemsToSave
+        });
+
+        showToast(`Saved ${window.activeSelectedDay} usage profile to cloud!`);
+      } catch (err) {
+        console.error("Save config error:", err);
+        showToast("Failed to save usage profile", true);
+      }
+    };
+
+    function setupOrdersListener() {
+      if (!window.currentUser) return;
+      const ordersCol = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
+
+      onSnapshot(ordersCol, (snapshot) => {
+        const orders = [];
+        snapshot.forEach((docSnap) => {
+          orders.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        window.savedOrders = orders;
+        document.getElementById('history-badge').innerText = orders.length;
+        renderHistoryList();
+      }, (error) => {
+        console.error("Firestore error:", error);
+      });
+    }
+
+    function setDefaultDeliveryDate() {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const yyyy = tomorrow.getFullYear();
+      const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+      const dd = String(tomorrow.getDate()).padStart(2, '0');
+      document.getElementById('order-delivery-date').value = `${yyyy}-${mm}-${dd}`;
+      onDeliveryDateChange();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderDayProfilePills();
+      setDefaultDeliveryDate();
+      recalculateAllOrders();
+      initAuth();
+    });
+  </script>
+
+  <script>
+    // --- AUTOMATED CALCULATION, DAY PROFILES & UNIT MANAGEMENT ---
+
+    function getFormattedDayString(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString + 'T00:00:00');
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const dayName = dayNames[date.getDay()];
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      return `${dayName} (${dd}/${mm})`;
+    }
+
+    function getDayNameFromDate(dateString) {
+      if (!dateString) return 'Monday';
+      const date = new Date(dateString + 'T00:00:00');
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      return dayNames[date.getDay()];
+    }
+
+    function onDeliveryDateChange() {
+      const dateVal = document.getElementById('order-delivery-date').value;
+      const formatted = getFormattedDayString(dateVal);
+      const preview = document.getElementById('formatted-day-preview');
+      if (preview) {
+        preview.innerText = formatted ? `Ordering for ${formatted}` : '';
+      }
+
+      const dayName = getDayNameFromDate(dateVal);
+      selectDayProfile(dayName, false);
+    }
+
+    function renderDayProfilePills() {
+      const container = document.getElementById('day-profile-pills');
+      if (!container) return;
+
+      container.innerHTML = window.DAYS_OF_WEEK.map(day => {
+        const isActive = day === window.activeSelectedDay;
+        const shortDay = day.substring(0, 3);
+        return `
+          <button onclick="selectDayProfile('${day}', true)" class="py-2 px-1 text-xs font-bold rounded-lg border transition text-center ${isActive ? 'bg-brand-600 text-white border-brand-700 shadow-xs ring-2 ring-brand-600/30' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'}">
+            <span>${shortDay}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectDayProfile(dayName, manualClick = false) {
+      if (!window.DAYS_OF_WEEK.includes(dayName)) return;
+      window.activeSelectedDay = dayName;
+      renderDayProfilePills();
+      recalculateAllOrders();
+
+      if (manualClick) {
+        showToast(`Loaded ${dayName}'s saved usage profile`);
+      }
+    }
+
+    // Recalculate suggested order = (Active Day Usage × Days Cover × Multiplier) - Leftover Qty
+    function recalculateAllOrders() {
+      const daysToCover = parseFloat(document.getElementById('days-to-cover')?.value) || 2;
+      const demandMultiplier = parseFloat(document.getElementById('demand-multiplier')?.value) || 1.0;
+      const activeDay = window.activeSelectedDay || 'Monday';
+
+      window.VEGETABLE_MASTER.forEach(item => {
+        if (!item.dailyUsageProfile) {
+          item.dailyUsageProfile = { Monday: 2, Tuesday: 2, Wednesday: 2, Thursday: 2, Friday: 3, Saturday: 3, Sunday: 2 };
+        }
+        
+        const activeUsage = parseFloat(item.dailyUsageProfile[activeDay]) || 0;
+        const targetUsageTotal = activeUsage * daysToCover * demandMultiplier;
+        const requiredOrder = Math.max(0, targetUsageTotal - item.leftover);
+        item.calculatedQty = Math.round(requiredOrder * 10) / 10;
+      });
+
+      filterPresetItems();
+      renderBasket();
+    }
+
+    function updateLeftover(itemId, value) {
+      const item = window.VEGETABLE_MASTER.find(i => i.id === itemId);
+      if (!item) return;
+
+      const parsed = parseFloat(value);
+      item.leftover = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+      item.overrideQty = null;
+
+      recalculateAllOrders();
+    }
+
+    function updateDailyUsageForActiveDay(itemId, value) {
+      const item = window.VEGETABLE_MASTER.find(i => i.id === itemId);
+      if (!item) return;
+
+      const activeDay = window.activeSelectedDay || 'Monday';
+      const parsed = parseFloat(value);
+      item.dailyUsageProfile[activeDay] = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+      item.overrideQty = null;
+
+      recalculateAllOrders();
+    }
+
+    function setManualOverrideQty(itemId, value) {
+      const item = window.VEGETABLE_MASTER.find(i => i.id === itemId);
+      if (!item) return;
+
+      const parsed = parseFloat(value);
+      item.overrideQty = isNaN(parsed) || parsed < 0 ? 0 : parsed;
+
+      renderBasket();
+      filterPresetItems();
+    }
+
+    // --- UNIT SELECTION & CUSTOMIZATION HANDLERS ---
+    function updateItemUnitSelect(itemId, selectValue) {
+      const item = window.VEGETABLE_MASTER.find(i => i.id === itemId);
+      if (!item) return;
+
+      if (selectValue === 'custom') {
+        item.isCustomUnit = true;
+      } else {
+        item.isCustomUnit = false;
+        item.unit = selectValue;
+      }
+
+      filterPresetItems();
+      renderBasket();
+    }
+
+    function updateItemCustomUnitText(itemId, textValue) {
+      const item = window.VEGETABLE_MASTER.find(i => i.id === itemId);
+      if (!item) return;
+
+      const cleanText = textValue.trim();
+      item.unit = cleanText || 'unit';
+
+      renderBasket();
+    }
+
+    function toggleCustomUnitInput(targetPrefix) {
+      const selectElem = document.getElementById(`${targetPrefix}-unit-select`);
+      const textElem = document.getElementById(`${targetPrefix}-unit-text`);
+      if (selectElem.value === 'custom') {
+        textElem.classList.remove('hidden');
+        textElem.focus();
+      } else {
+        textElem.classList.add('hidden');
+      }
+    }
+
+    function resetAllLeftovers() {
+      window.VEGETABLE_MASTER.forEach(i => {
+        i.leftover = 0;
+        i.overrideQty = null;
+      });
+      recalculateAllOrders();
+      showToast("Leftovers reset to 0");
+    }
+
+    function removeItem(itemId) {
+      window.VEGETABLE_MASTER = window.VEGETABLE_MASTER.filter(i => i.id !== itemId);
+      recalculateAllOrders();
+      showToast("Item removed");
+    }
+
+    // Category Filter
+    function filterCategory(catKey) {
+      window.currentCategoryFilter = catKey;
+      
+      const pills = document.querySelectorAll('.cat-pill');
+      pills.forEach(pill => {
+        if ((catKey === 'All' && pill.innerText.includes('All')) ||
+            (catKey === 'Processed' && pill.innerText.includes('Processed') && !pill.innerText.includes('Non')) ||
+            (catKey === 'NonProcessed' && pill.innerText.includes('Non Processed'))) {
+          pill.className = "cat-pill px-3 py-1 text-xs font-medium rounded-full bg-brand-600 text-white whitespace-nowrap shadow-xs";
+        } else {
+          pill.className = "cat-pill px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap";
+        }
+      });
+
+      filterPresetItems();
+    }
+
+    function filterPresetItems() {
+      const searchVal = (document.getElementById('veg-search')?.value || '').toLowerCase().trim();
+      const catKey = window.currentCategoryFilter;
+
+      const filtered = window.VEGETABLE_MASTER.filter(item => {
+        const matchesCat = (catKey === 'All') || (item.catKey === catKey);
+        const matchesSearch = item.name.toLowerCase().includes(searchVal);
+        return matchesCat && matchesSearch;
+      });
+
+      renderItemGrid(filtered);
+    }
+
+    function renderItemGrid(items) {
+      const container = document.getElementById('quick-items-grid');
+      const daysToCover = parseFloat(document.getElementById('days-to-cover')?.value) || 2;
+      const demandMultiplier = parseFloat(document.getElementById('demand-multiplier')?.value) || 1.0;
+      const activeDay = window.activeSelectedDay || 'Monday';
+
+      if (items.length === 0) {
+        container.innerHTML = `<div class="text-center py-8 text-xs text-gray-400">No matching items found.</div>`;
+        return;
+      }
+
+      container.innerHTML = items.map(item => {
+        const activeOrderQty = item.overrideQty !== null ? item.overrideQty : item.calculatedQty;
+        const currentUsageRate = parseFloat(item.dailyUsageProfile?.[activeDay] || 0);
+        const totalTargetNeed = Math.round((currentUsageRate * daysToCover * demandMultiplier) * 10) / 10;
+        const isStandard = window.STANDARD_UNITS.includes(item.unit) && !item.isCustomUnit;
+
+        return `
+          <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 hover:border-brand-600 transition flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex-1 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <span class="text-[10px] font-bold ${item.catKey === 'Processed' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-blue-700 bg-blue-50 border-blue-200'} border px-1.5 py-0.5 rounded">
+                    ${item.catKey === 'Processed' ? 'Pre-cut' : 'Non Processed'}
+                  </span>
+                  <span class="text-xs font-bold text-gray-800">${escapeHtml(item.name)}</span>
+                </div>
+                ${item.id.startsWith('cust_') ? `
+                  <button onclick="removeItem('${item.id}')" class="text-gray-300 hover:text-red-500 text-xs px-1" title="Remove custom item">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                ` : ''}
+              </div>
+
+              <!-- Active Day Usage Rate Input & Unit Picker -->
+              <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span><strong class="text-brand-800">${activeDay}</strong> Usage/day: 
+                  <input type="number" min="0" step="0.5" value="${currentUsageRate}" onchange="updateDailyUsageForActiveDay('${item.id}', this.value)" class="w-14 text-center text-xs font-bold bg-white border border-gray-300 rounded px-1 py-0.5 focus:ring-1 focus:ring-brand-600">
+                </span>
+
+                <!-- Customizable Unit Selector -->
+                <div class="flex items-center space-x-1">
+                  <span class="text-gray-400">Unit:</span>
+                  <select onchange="updateItemUnitSelect('${item.id}', this.value)" class="bg-white border border-gray-300 text-gray-800 text-[11px] font-bold rounded px-1.5 py-0.5 focus:ring-1 focus:ring-brand-600">
+                    ${window.STANDARD_UNITS.map(u => `<option value="${u}" ${isStandard && item.unit === u ? 'selected' : ''}>${u}</option>`).join('')}
+                    <option value="custom" ${item.isCustomUnit || !isStandard ? 'selected' : ''}>Other...</option>
+                  </select>
+
+                  ${item.isCustomUnit || !isStandard ? `
+                    <input type="text" value="${escapeHtml(item.unit)}" oninput="updateItemCustomUnitText('${item.id}', this.value)" placeholder="unit label" class="w-16 bg-white border border-brand-400 text-brand-900 font-bold text-[11px] rounded px-1 py-0.5 focus:ring-1 focus:ring-brand-600">
+                  ` : ''}
+                </div>
+
+                <span class="text-gray-400">| Need: <strong class="text-gray-700">${totalTargetNeed} ${escapeHtml(item.unit)}</strong></span>
+              </div>
+            </div>
+
+            <!-- Leftover Input & Calculated Order Display -->
+            <div class="flex items-center space-x-3 bg-white p-2 rounded-lg border border-gray-200 shrink-0">
+              <div class="text-center">
+                <label class="block text-[10px] font-bold text-amber-800 uppercase">Leftover Stock</label>
+                <div class="flex items-center space-x-1 mt-0.5">
+                  <input type="number" min="0" step="0.5" value="${item.leftover}" onchange="updateLeftover('${item.id}', this.value)" class="w-16 text-center text-xs font-bold bg-amber-50 border border-amber-300 text-amber-900 rounded p-1 focus:ring-brand-600">
+                  <span class="text-[10px] text-gray-500 font-medium">${escapeHtml(item.unit)}</span>
+                </div>
+              </div>
+
+              <div class="text-gray-300 text-lg font-bold">→</div>
+
+              <div class="text-center min-w-[70px]">
+                <label class="block text-[10px] font-bold text-brand-800 uppercase">To Order</label>
+                <div class="flex items-center justify-center space-x-1 mt-0.5">
+                  <input type="number" min="0" step="0.5" value="${activeOrderQty}" onchange="setManualOverrideQty('${item.id}', this.value)" class="w-16 text-center text-xs font-bold ${activeOrderQty > 0 ? 'bg-emerald-100 text-emerald-900 border-emerald-400' : 'bg-gray-100 text-gray-500 border-gray-300'} border rounded p-1 focus:ring-brand-600">
+                  <span class="text-[10px] text-gray-500 font-medium">${escapeHtml(item.unit)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addNewCustomVegetable() {
+      const nameInput = document.getElementById('custom-name');
+      const typeInput = document.getElementById('custom-type');
+      const usageInput = document.getElementById('custom-daily-usage');
+      const unitSelect = document.getElementById('custom-unit-select');
+      const unitText = document.getElementById('custom-unit-text');
+
+      const name = nameInput.value.trim();
+      if (!name) {
+        showToast("Enter custom item name & cut specification", true);
+        return;
+      }
+
+      let selectedUnit = unitSelect.value;
+      let isCustomUnit = false;
+
+      if (selectedUnit === 'custom') {
+        selectedUnit = unitText.value.trim() || 'unit';
+        isCustomUnit = true;
+      }
+
+      const defaultUsageVal = parseFloat(usageInput.value) || 1;
+      const initialProfile = {};
+      window.DAYS_OF_WEEK.forEach(day => {
+        initialProfile[day] = defaultUsageVal;
+      });
+
+      const newItem = {
+        id: 'cust_' + Date.now(),
+        name: name,
+        unit: selectedUnit,
+        isCustomUnit: isCustomUnit,
+        cat: typeInput.value,
+        catKey: typeInput.value === 'Pre-cut processed items' ? 'Processed' : 'NonProcessed',
+        dailyUsageProfile: initialProfile,
+        leftover: 0,
+        overrideQty: null
+      };
+
+      window.VEGETABLE_MASTER.push(newItem);
+      nameInput.value = '';
+      unitText.value = '';
+      recalculateAllOrders();
+      showToast(`Added custom item '${name}'`);
+    }
+
+    // Render Finalized Basket Sidebar
+    function renderBasket() {
+      const container = document.getElementById('basket-items-container');
+      const totalItemsElem = document.getElementById('summary-item-count');
+      const activeCountElem = document.getElementById('summary-active-count');
+      const showZeroItems = document.getElementById('toggle-include-zero')?.checked;
+      const activeDay = window.activeSelectedDay || 'Monday';
+
+      const activeItems = window.VEGETABLE_MASTER.map(item => {
+        const orderQty = item.overrideQty !== null ? item.overrideQty : item.calculatedQty;
+        return { ...item, finalOrderQty: orderQty };
+      }).filter(item => showZeroItems ? true : item.finalOrderQty > 0);
+
+      const nonZeroItems = activeItems.filter(i => i.finalOrderQty > 0);
+
+      if (activeItems.length === 0) {
+        container.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center py-10 text-center text-gray-400">
+            <i class="fa-solid fa-basket-shopping text-3xl text-gray-200 mb-2"></i>
+            <p class="text-xs font-medium text-gray-500">No items in order list</p>
+            <p class="text-[11px] text-gray-400">Adjust leftovers or check "Show x - items"</p>
+          </div>
+        `;
+        totalItemsElem.innerText = "0 items";
+        activeCountElem.innerText = "0 active";
+        return;
+      }
+
+      container.innerHTML = activeItems.map(item => {
+        const displayQty = item.finalOrderQty > 0 ? `${item.finalOrderQty}${item.unit}` : '-';
+        const currentUsageRate = item.dailyUsageProfile?.[activeDay] || 0;
+
+        return `
+          <div class="bg-gray-50 border border-gray-200 rounded-lg p-2.5 flex items-center justify-between text-xs">
+            <div class="flex-1 pr-2">
+              <span class="font-bold text-gray-800 block leading-tight">${escapeHtml(item.name)}</span>
+              <span class="text-[10px] text-gray-400">Leftover: ${item.leftover}${escapeHtml(item.unit)} | ${activeDay} Usage: ${currentUsageRate}${escapeHtml(item.unit)}</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <span class="font-bold px-2 py-1 rounded text-xs ${item.finalOrderQty > 0 ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-gray-200 text-gray-600'}">
+                x ${escapeHtml(displayQty)}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      totalItemsElem.innerText = `${activeItems.length} lines shown`;
+      activeCountElem.innerText = `${nonZeroItems.length} active order items`;
+    }
+
+    // Switch View Tabs
+    function switchTab(tab) {
+      const newOrderBtn = document.getElementById('tab-new-order');
+      const historyBtn = document.getElementById('tab-history');
+      const newOrderView = document.getElementById('view-new-order');
+      const historyView = document.getElementById('view-history');
+
+      if (tab === 'new-order') {
+        newOrderBtn.className = "flex-1 py-2.5 text-sm font-semibold rounded-lg transition duration-150 flex items-center justify-center space-x-2 bg-brand-600 text-white shadow";
+        historyBtn.className = "flex-1 py-2.5 text-sm font-semibold rounded-lg transition duration-150 flex items-center justify-center space-x-2 text-gray-600 hover:text-brand-700";
+        newOrderView.classList.remove('hidden');
+        historyView.classList.add('hidden');
+      } else {
+        historyBtn.className = "flex-1 py-2.5 text-sm font-semibold rounded-lg transition duration-150 flex items-center justify-center space-x-2 bg-brand-600 text-white shadow";
+        newOrderBtn.className = "flex-1 py-2.5 text-sm font-semibold rounded-lg transition duration-150 flex items-center justify-center space-x-2 text-gray-600 hover:text-brand-700";
+        historyView.classList.remove('hidden');
+        newOrderView.classList.add('hidden');
+        renderHistoryList();
+      }
+    }
+
+    // --- SAVE ORDER & FIRESTORE CLOUD STORAGE ---
+
+    async function saveOrderToCloud() {
+      if (!window.currentUser) {
+        showToast("Connecting to cloud... try again shortly", true);
+        return;
+      }
+
+      const deliveryDate = document.getElementById('order-delivery-date').value;
+      const vendor = document.getElementById('order-vendor').value.trim() || 'SIXHANDS - MILLENIAWALK';
+      const notes = document.getElementById('order-notes').value.trim();
+      const activeDay = window.activeSelectedDay || 'Monday';
+
+      const orderItems = window.VEGETABLE_MASTER.map(item => {
+        const finalQty = item.overrideQty !== null ? item.overrideQty : item.calculatedQty;
+        return {
+          name: item.name,
+          qty: finalQty,
+          unit: item.unit,
+          category: item.cat,
+          leftover: item.leftover,
+          activeDayUsage: item.dailyUsageProfile?.[activeDay] || 0
+        };
+      });
+
+      const saveBtn = document.getElementById('btn-save-order');
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Saving...</span>`;
+
+      try {
+        const orderData = {
+          orderNumber: 'SXH-' + Math.floor(100000 + Math.random() * 900000),
+          createdAt: new Date().toISOString(),
+          deliveryDate: deliveryDate,
+          formattedDay: getFormattedDayString(deliveryDate),
+          targetDayName: activeDay,
+          vendor: vendor,
+          status: 'Pending',
+          items: orderItems,
+          notes: notes,
+          createdBy: window.currentUser.uid
+        };
+
+        const ordersCol = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
+        await addDoc(ordersCol, orderData);
+
+        showToast("Order saved to cloud!");
+        setTimeout(() => switchTab('history'), 400);
+
+      } catch (err) {
+        console.error("Save error:", err);
+        showToast("Failed to save order", true);
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> <span>Save & Register Order</span>`;
+      }
+    }
+
+    async function updateOrderStatus(orderId, newStatus) {
+      if (!window.currentUser || !orderId) return;
+      try {
+        const orderDocRef = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'orders', orderId);
+        await updateDoc(orderDocRef, { status: newStatus });
+        showToast(`Status updated to ${newStatus}`);
+      } catch (err) {
+        showToast("Status update failed", true);
+      }
+    }
+
+    async function deleteOrder(orderId) {
+      if (!confirm("Delete this order record permanently?")) return;
+      try {
+        const orderDocRef = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'orders', orderId);
+        await deleteDoc(orderDocRef);
+        showToast("Order deleted");
+      } catch (err) {
+        showToast("Could not delete", true);
+      }
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById('history-orders-list');
+      const searchVal = (document.getElementById('history-search')?.value || '').toLowerCase();
+      const statusFilter = document.getElementById('history-status-filter')?.value || 'ALL';
+      const sortOrder = document.getElementById('history-date-sort')?.value || 'desc';
+
+      let orders = [...(window.savedOrders || [])];
+
+      orders = orders.filter(o => {
+        const matchesStatus = (statusFilter === 'ALL') || (o.status === statusFilter);
+        const vegText = (o.items || []).map(i => i.name).join(' ').toLowerCase();
+        const vendorText = (o.vendor || '').toLowerCase();
+        const matchesSearch = !searchVal || vegText.includes(searchVal) || vendorText.includes(searchVal);
+        return matchesStatus && matchesSearch;
+      });
+
+      orders.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+      });
+
+      if (orders.length === 0) {
+        container.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-gray-400 border border-gray-200">No order logs found.</div>`;
+        return;
+      }
+
+      container.innerHTML = orders.map(order => {
+        const itemsList = order.items || [];
+        const formattedCreated = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-SG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+
+        let statusBadge = 'bg-amber-100 text-amber-800 border-amber-200';
+        if (order.status === 'Sent') statusBadge = 'bg-blue-100 text-blue-800 border-blue-200';
+        if (order.status === 'Delivered') statusBadge = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+
+        return `
+          <div class="bg-white rounded-xl shadow-xs border border-gray-200 p-4 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-2.5 gap-2">
+              <div>
+                <span class="font-mono text-xs font-bold text-gray-900">${order.orderNumber || 'SXH-ORDER'}</span>
+                <span class="text-xs font-semibold text-gray-600">(${escapeHtml(order.vendor || 'SIXHANDS')})</span>
+                <div class="text-[11px] text-gray-400">Target Delivery: <strong class="text-brand-700">${order.formattedDay || order.deliveryDate}</strong> | Created: ${formattedCreated}</div>
+              </div>
+              <div class="flex items-center space-x-2">
+                <select onchange="updateOrderStatus('${order.id}', this.value)" class="text-xs font-bold px-2 py-1 rounded-full border ${statusBadge}">
+                  <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                  <option value="Sent" ${order.status === 'Sent' ? 'selected' : ''}>Sent</option>
+                  <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                  <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                </select>
+                <button onclick="deleteOrder('${order.id}')" class="text-gray-300 hover:text-red-500 p-1"><i class="fa-solid fa-trash-can text-xs"></i></button>
+              </div>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg p-2.5 text-xs space-y-1">
+              ${itemsList.map(i => `
+                <div class="flex justify-between text-gray-800 border-b border-gray-200/40 pb-0.5 last:border-0">
+                  <span>${escapeHtml(i.name)}</span>
+                  <span class="font-bold text-brand-900">${i.qty > 0 ? 'x ' + i.qty + escapeHtml(i.unit || '') : 'x -'}</span>
+                </div>
+              `).join('')}
+            </div>
+
+            <div class="flex justify-between items-center pt-1">
+              <button onclick="duplicateOrderToBasket('${order.id}')" class="text-brand-700 font-semibold text-xs hover:underline flex items-center space-x-1">
+                <i class="fa-solid fa-copy"></i><span>Re-load into Active Order</span>
+              </button>
+              <button onclick="openExportModalForOrder('${order.id}')" class="text-emerald-700 font-bold text-xs flex items-center space-x-1 hover:underline">
+                <i class="fa-brands fa-whatsapp"></i><span>Export WhatsApp Template</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function duplicateOrderToBasket(orderId) {
+      const order = window.savedOrders.find(o => o.id === orderId);
+      if (!order || !order.items) return;
+
+      order.items.forEach(histItem => {
+        const existing = window.VEGETABLE_MASTER.find(m => m.name === histItem.name);
+        if (existing) {
+          existing.overrideQty = histItem.qty;
+          if (histItem.unit) existing.unit = histItem.unit;
+        } else {
+          const initialProfile = {};
+          window.DAYS_OF_WEEK.forEach(day => { initialProfile[day] = histItem.activeDayUsage || 1; });
+
+          window.VEGETABLE_MASTER.push({
+            id: 'cust_' + Date.now() + Math.random().toString().substr(2, 4),
+            name: histItem.name,
+            unit: histItem.unit || 'kg',
+            isCustomUnit: !window.STANDARD_UNITS.includes(histItem.unit),
+            cat: histItem.category || 'Non Processed items',
+            catKey: (histItem.category || '').includes('Pre-cut') ? 'Processed' : 'NonProcessed',
+            dailyUsageProfile: initialProfile,
+            leftover: 0,
+            overrideQty: histItem.qty
+          });
+        }
+      });
+
+      switchTab('new-order');
+      recalculateAllOrders();
+      showToast("Order items loaded into active form!");
+    }
+
+    function refreshHistory() {
+      renderHistoryList();
+      showToast("Order log refreshed");
+    }
+
+    // --- WHATSAPP TEMPLATE EXPORTER (EXACT COMPACT FORMAT) ---
+
+    function generateOrderText(deliveryDate, vendor, items, notes) {
+      const headerTitle = vendor ? vendor.toUpperCase() : 'SIXHANDS - MILLENIAWALK';
+      const dayFormatted = getFormattedDayString(deliveryDate);
+
+      const processedItems = items.filter(i => i.category === 'Pre-cut processed items');
+      const nonProcessedItems = items.filter(i => i.category !== 'Pre-cut processed items');
+
+      let text = `*${headerTitle}*\n`;
+      text += `Ordering for ${dayFormatted}\n`;
+      text += `----------------------------------\n`;
+      text += `*Pre-cut processed items*\n\n`;
+
+      if (processedItems.length > 0) {
+        processedItems.forEach(item => {
+          const qtyStr = item.qty > 0 ? `${item.qty}${item.unit || ''}` : '-';
+          text += `${item.name}\nx ${qtyStr}\n`;
+        });
+      }
+
+      text += `----------------------------------\n`;
+      text += `*Non Processed items*\n\n`;
+
+      if (nonProcessedItems.length > 0) {
+        nonProcessedItems.forEach(item => {
+          const qtyStr = item.qty > 0 ? `${item.qty}${item.unit || ''}` : '-';
+          text += `${item.name}\nx ${qtyStr}\n`;
+        });
+      }
+
+      if (notes) {
+        text += `\nRemarks: ${notes}\n`;
+      }
+
+      text += `\nThank you 🙏🏻`;
+      return text;
+    }
+
+    function openExportModalCurrent() {
+      const deliveryDate = document.getElementById('order-delivery-date').value;
+      const vendor = document.getElementById('order-vendor').value.trim() || 'SIXHANDS - MILLENIAWALK';
+      const notes = document.getElementById('order-notes').value.trim();
+
+      const currentItems = window.VEGETABLE_MASTER.map(item => {
+        const qty = item.overrideQty !== null ? item.overrideQty : item.calculatedQty;
+        return { name: item.name, qty: qty, unit: item.unit, category: item.cat };
+      });
+
+      const formattedText = generateOrderText(deliveryDate, vendor, currentItems, notes);
+      document.getElementById('export-text-area').value = formattedText;
+      document.getElementById('btn-open-whatsapp').href = `https://api.whatsapp.com/send?text=${encodeURIComponent(formattedText)}`;
+      document.getElementById('export-modal').classList.remove('hidden');
+    }
+
+    function openExportModalForOrder(orderId) {
+      const order = window.savedOrders.find(o => o.id === orderId);
+      if (!order) return;
+
+      const formattedText = generateOrderText(order.deliveryDate, order.vendor, order.items || [], order.notes);
+      document.getElementById('export-text-area').value = formattedText;
+      document.getElementById('btn-open-whatsapp').href = `https://api.whatsapp.com/send?text=${encodeURIComponent(formattedText)}`;
+      document.getElementById('export-modal').classList.remove('hidden');
+    }
+
+    function closeExportModal() {
+      document.getElementById('export-modal').classList.add('hidden');
+      document.getElementById('copy-btn-label').innerText = "Copy Text";
+    }
+
+    function copyExportText() {
+      const textArea = document.getElementById('export-text-area');
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        document.getElementById('copy-btn-label').innerText = "Copied!";
+        showToast("Copied to clipboard!");
+      } catch (err) {
+        showToast("Copy failed", true);
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      const toastIcon = document.getElementById('toast-icon');
+
+      toastMsg.innerText = msg;
+      toastIcon.className = isError ? "fa-solid fa-triangle-exclamation text-amber-400" : "fa-solid fa-circle-check text-emerald-400";
+
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 2500);
+    }
+  </script>
+</body>
+</html>
